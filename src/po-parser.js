@@ -53,17 +53,22 @@ async function recognizeScannedPages(pdf, onProgress) {
   return lines
 }
 
-export async function parsePurchaseOrder(file, onProgress = () => {}) {
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
-  onProgress('Checking PDF text…')
-  let lines = await extractTextLines(pdf)
-  let extractionMode = 'text'
-  if (lines.join('').length < 30) {
-    extractionMode = 'ocr'
-    lines = await recognizeScannedPages(pdf, onProgress)
-  }
+async function extractWordLines(file, onProgress) {
+  onProgress('Reading Word purchase order…')
+  const mammothModule = await import('mammoth')
+  const mammoth = mammothModule.default || mammothModule
+  const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() })
+  const documentRoot = new DOMParser().parseFromString(result.value, 'text/html')
+  return [...documentRoot.querySelectorAll('p, tr')].map((element) => {
+    if (element.matches('tr')) return clean([...element.querySelectorAll('th, td')].map((cell) => cell.textContent).join(' '))
+    if (element.closest('tr')) return ''
+    return clean(element.textContent)
+  }).filter(Boolean)
+}
+
+function mapPurchaseOrder(lines, extractionMode, onProgress) {
   const text = lines.join('\n')
-  if (text.replace(/\s/g, '').length < 20) throw new Error('No readable text was found in this scan. Try a clearer, upright PDF or enter the details manually.')
+  if (text.replace(/\s/g, '').length < 20) throw new Error('No readable PO text was found. Try a clearer file or enter the details manually.')
   onProgress('Mapping purchase order fields…')
   const poNumber = text.match(/(?:\bpurchase\s*order\b|\bp\.?\s*o\.?\b)(?:\s*(?:no|number|#|ref(?:erence)?))?\s*[:#-]?\s*([A-Z0-9][A-Z0-9/_-]{2,})/i)?.[1] || ''
   const dateMatch = text.match(/(?:po\s*)?date\s*[:#-]?\s*(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/i)
@@ -76,4 +81,24 @@ export async function parsePurchaseOrder(file, onProgress = () => {}) {
     if (match) items.push({ id: crypto.randomUUID(), description: match[1].trim(), quantity: Number(match[2]), unit: match[3], rate: Number(match[4].replace(/,/g, '')), tax: 0 })
   })
   return { poNumber, date, customerName, items, extractionMode }
+}
+
+export async function parsePurchaseOrder(file, onProgress = () => {}) {
+  const fileName = file.name.toLowerCase()
+  if (fileName.endsWith('.doc')) throw new Error('Legacy .doc files are not supported. Open the file in Word and save it as .docx, then import it again.')
+  if (fileName.endsWith('.docx')) {
+    const lines = await extractWordLines(file, onProgress)
+    return mapPurchaseOrder(lines, 'word', onProgress)
+  }
+  if (!fileName.endsWith('.pdf') && file.type !== 'application/pdf') throw new Error('Please upload a PDF or DOCX purchase order.')
+
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+  onProgress('Checking PDF text…')
+  let lines = await extractTextLines(pdf)
+  let extractionMode = 'text'
+  if (lines.join('').length < 30) {
+    extractionMode = 'ocr'
+    lines = await recognizeScannedPages(pdf, onProgress)
+  }
+  return mapPurchaseOrder(lines, extractionMode, onProgress)
 }

@@ -16,6 +16,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide": "^1.33.0",
+    "mammoth": "^1.12.1",
     "pdfjs-dist": "^6.2.108",
     "tesseract.js": "^7.0.0"
   }
