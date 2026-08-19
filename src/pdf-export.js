@@ -6,12 +6,13 @@ export async function exportPdf(element, filename) {
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 210, 297, undefined, 'FAST')
   const blob = pdf.output('blob')
-  if ('showSaveFilePicker' in window) {
-    const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }] })
-    const stream = await handle.createWritable()
-    await stream.write(blob)
-    await stream.close()
-  } else {
-    pdf.save(filename)
-  }
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }

@@ -136,7 +136,30 @@ document.querySelectorAll('.add').forEach((button) => button.addEventListener('c
 document.querySelectorAll('.nav[data-type]').forEach((button) => button.addEventListener('click', () => switchType(button.dataset.type)))
 document.querySelector('#convert').addEventListener('click', () => { switchType('invoice', true); notify('Converted to a new tax invoice') })
 document.querySelector('#save').addEventListener('click', () => saveDocument())
-document.querySelector('#download').addEventListener('click', async () => { try { await exportPdf(document.querySelector('#paper'), `${state.number}.pdf`); saveDocument(false); notify('PDF saved and added to history') } catch (error) { if (error.name !== 'AbortError') { console.error(error); notify('PDF export failed') } } })
+document.querySelector('#download').addEventListener('click', async () => {
+  const button = document.querySelector('#download')
+  const originalContent = button.innerHTML
+  const integratedBrowser = /Electron|\bCode\//.test(navigator.userAgent)
+  if (integratedBrowser) {
+    navigator.clipboard?.writeText(location.href).catch(() => {})
+    notify('VS Code preview blocks downloads. Open this link in Safari or Chrome.')
+    return
+  }
+  button.disabled = true
+  button.textContent = 'Generating PDF…'
+  try {
+    await exportPdf(document.querySelector('#paper'), `${state.number}.pdf`)
+    saveDocument(false)
+    notify('PDF download started and added to history')
+  } catch (error) {
+    console.error(error)
+    notify('PDF download failed')
+  } finally {
+    button.disabled = false
+    button.innerHTML = originalContent
+    createIcons({ icons })
+  }
+})
 document.querySelector('#logo-file').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { settings.logo = reader.result; localStorage.setItem(settingsKey, JSON.stringify(settings)); renderPaper(); notify('Logo saved') }; reader.readAsDataURL(file) })
 document.querySelector('#po-file').addEventListener('change', async (event) => { const file = event.target.files[0]; if (!file) return; notify('Extracting purchase order…'); try { const result = await parsePurchaseOrder(file, notify); switchType('invoice'); state = { ...state, ...result, items: result.items.length ? result.items : state.items }; populate(); notify(`${result.extractionMode === 'ocr' ? 'Scanned PO recognized' : 'PO imported'}. Review ${result.items.length} detected item(s).`) } catch (error) { notify(error.message); console.error(error) } event.target.value = '' })
 document.querySelector('#history-open').addEventListener('click', () => { renderHistory(); document.querySelector('#history').showModal() })
