@@ -7,6 +7,7 @@ const recordsKey = 'metalys-documents-v1'
 const settingsKey = 'metalys-settings-v1'
 const defaultLogo = `${import.meta.env.BASE_URL}metalys-logo.png`
 const signatorySignature = `${import.meta.env.BASE_URL}sachu-santhosh-signature.png`
+const companySeal = `${import.meta.env.BASE_URL}metalys-company-seal.png`
 const today = () => new Date().toISOString().slice(0, 10)
 const id = () => crypto.randomUUID()
 const item = () => ({ id: id(), description: '', quantity: 1, unit: 'Nos', rate: 0, tax: 0 })
@@ -72,6 +73,7 @@ function renderPaper() {
   document.querySelector('#paper').innerHTML = `<header class="paper-head">${logoMarkup}<div><strong>${company.name}</strong><span>${company.address}</span><span>${company.city}</span><span>${company.country}</span></div></header><section class="document-head"><div><h2>${invoice ? 'TAX INVOICE' : 'PROFORMA INVOICE'}</h2></div><div><strong>${escape(state.number)}</strong><span>${escape(state.status)}</span></div></section><section class="parties"><div><small>BILL TO</small><strong>${escape(state.customerName) || 'Customer company'}</strong><p>${escape(state.customerAddress).replace(/\n/g, '<br>') || 'Customer address'}</p>${state.customerTaxId ? `<p>Tax ID / CR: ${escape(state.customerTaxId)}</p>` : ''}</div><dl><dt>Issue date</dt><dd>${escape(state.date)}</dd><dt>PO number</dt><dd>${escape(state.poNumber) || '—'}</dd><dt>Place</dt><dd>Doha, Qatar</dd></dl></section><table class="paper-table"><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Tax</th><th>Amount (QAR)</th></tr></thead><tbody>${state.items.map((row, index) => `<tr><td>${index + 1}</td><td>${escape(row.description) || 'Material / service'}</td><td>${money(row.quantity)}</td><td>${escape(row.unit)}</td><td>${money(row.rate)}</td><td>${money(row.tax)}%</td><td>${money(row.quantity * row.rate * (1 + row.tax / 100))}</td></tr>`).join('')}</tbody></table><section class="paper-bottom"><div class="terms"><small>PAYMENT TERMS</small><p>${escape(state.paymentTerms)}</p><small>NOTES</small><p>${escape(state.notes).replace(/\n/g, '<br>')}</p>${invoice ? '' : '<div>This document is a proforma invoice and not a demand for payment.</div>'}</div><div class="summary"><p><span>Subtotal</span><b>QAR ${money(sum.subtotal)}</b></p><p><span>Tax</span><b>QAR ${money(sum.tax)}</b></p><p><span>Discount</span><b>QAR ${money(state.discount)}</b></p><p><span>Grand total</span><b>QAR ${money(sum.total)}</b></p></div></section><section class="paper-approval"><div><span>AUTHORISED SIGNATORY</span><div class="signature-space"></div><strong>Sachu Santhosh</strong><small>Finance In charge</small></div></section><footer><span>Metalys Enclosures Manufacturing</span><span>Doha, State of Qatar</span><span>Page 1 of 1</span></footer>`
   const signatureSpace = document.querySelector('.signature-space')
   signatureSpace.outerHTML = `<img class="signature-image" src="${signatorySignature}" alt="Signature of Sachu Santhosh">`
+  document.querySelector('.paper-approval').insertAdjacentHTML('beforeend', `<img class="company-seal" src="${companySeal}" alt="Metalys company seal">`)
 }
 
 function populate() {
